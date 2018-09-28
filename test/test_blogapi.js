@@ -29,7 +29,10 @@ function seedBlogData() {
 function generateBlogData() {
   return {
     id: faker.random.uuid(),
-    author: faker.name.firstName() + '_' + faker.name.lastName(),
+    author: {
+        firstName: faker.name.firstName(),
+        lastName: faker.name.lastName()
+      },
     title: faker.lorem.words(),
     content: faker.lorem.paragraph(),
     created: faker.date.recent()
@@ -70,14 +73,14 @@ describe('Blog API', function() {
       let res;
       return chai.request(app)
         .get('/posts')
-        .then(function(_res) {
+        .then(_res => {
           res = _res;
           expect(res).to.have.status(200);
-          expect(res.body.posts).to.have.lengthOf.at.least(1);
+          expect(res.body).to.have.lengthOf.at.least(1);
           return BlogPost.count();
         })
-        .then(function(count) {
-          expect(res.body.posts).to.have.lengthOf(count);
+        .then(count => {
+          expect(res.body).to.have.lengthOf(count);
         });
     });
 
@@ -86,26 +89,24 @@ describe('Blog API', function() {
       let resBlogpost;
       return chai.request(app)
         .get('/posts')
-        .then(function(res) {
+        .then(res => {
           expect(res).to.have.status(200);
           expect(res).to.be.json;
-          expect(res.body.posts).to.be.a('array');
-          expect(res.body.posts).to.have.lengthOf.at.least(1);
+          expect(res.body).to.be.a('array');
+          expect(res.body).to.have.lengthOf.at.least(1);
 
-          res.body.posts.forEach(function(post) {
+          res.body.forEach(post => {
             expect(post).to.be.a('object');
             expect(post).to.include.keys(
               'id', 'author', 'title', 'content', 'created');
           });
-          resBlogpost = res.body.posts[0];
+          resBlogpost = res.body[0];
           return BlogPost.findById(resBlogpost.id);
         })
-        .then(function(post) {
-          expect(resBlogpost.id).to.equal(post.id);
-          expect(resBlogpost.author).to.equal(post.author);
+        .then(post => {
+          expect(resBlogpost.author).to.equal(post.authorName);
           expect(resBlogpost.title).to.equal(post.title);
           expect(resBlogpost.content).to.equal(post.content);
-          expect(resBlogpost.created).to.equal(newBlogPost.created);
         });
     });
   });
@@ -119,25 +120,24 @@ describe('Blog API', function() {
       return chai.request(app)
         .post('/posts')
         .send(newBlogPost)
-        .then(function(res) {
+        .then(res => {
           expect(res).to.have.status(201);
           expect(res).to.be.json;
           expect(res.body).to.be.a('object');
           expect(res.body).to.include.keys(
             'id', 'author', 'title', 'content', 'created');
-          expect(res.body.name).to.equal(newBlogPost.author);
+          expect(res.body.author).to.equal(`${newBlogPost.author.firstName} ${newBlogPost.author.lastName}`);
           expect(res.body.id).to.not.be.null;
           expect(res.body.title).to.equal(newBlogPost.title);
           expect(res.body.content).to.equal(newBlogPost.content);
-          expect(res.body.created).to.equal(newBlogPost.created);
 
           return BlogPost.findById(res.body.id);
         })
-        .then(function(post) {
-          expect(post.author).to.equal(newBlogPost.author);
+        .then(post => {
+          expect(post.author.firstName).to.equal(newBlogPost.author.firstName);
+          expect(post.author.lastName).to.equal(newBlogPost.author.lastName);
           expect(post.title).to.equal(newBlogPost.title);
           expect(post.content).to.equal(newBlogPost.content);
-          expect(post.created).to.equal(newBlogPost.created);
         });
     });
   });
@@ -152,19 +152,19 @@ describe('Blog API', function() {
 
         return BlogPost
           .findOne()
-          .then(function(post) {
+          .then(post => {
             updateData.id = post.id;
 
             return chai.request(app)
               .put(`/posts/${post.id}`)
               .send(updateData);
           })
-          .then(function(res) {
+          .then(res => {
             expect(res).to.have.status(204);
 
             return BlogPost.findById(updateData.id);
           })
-          .then(function(post) {
+          .then(post => {
             expect(post.title).to.equal(updateData.title);
             expect(post.content).to.equal(updateData.content);
           });
@@ -180,15 +180,15 @@ describe('Blog API', function() {
 
       return BlogPost
         .findOne()
-        .then(function(_blog) {
+        .then(_blog => {
           blog = _blog;
           return chai.request(app).delete(`/posts/${blog.id}`);
         })
-        .then(function(res) {
+        .then(res => {
           expect(res).to.have.status(204);
           return BlogPost.findById(blog.id);
         })
-        .then(function(_blog) {
+        .then(_blog => {
           expect(_blog).to.be.null;
         });
     });
